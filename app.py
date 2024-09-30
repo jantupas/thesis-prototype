@@ -80,8 +80,8 @@ class ECABlock(torch.nn.Module):
         return x * y.expand_as(x)
 
 # Load models
-segformer_model_path = r'D:\THESIS-PROTOTYPE\FINAL-THESIS-PROTOTYPE\FINAL-THESIS-PROTOTYPE\final_segformer_model.pth'
-efficientnet_model_path = r'D:\THESIS-PROTOTYPE\FINAL-THESIS-PROTOTYPE\FINAL-THESIS-PROTOTYPE\final_ef_eca_ca_model.pth'
+segformer_model_path = 'final_segformer_model.pth'
+efficientnet_model_path = 'final_ef_eca_ca_model.pth'
 
 segformer_model = torch.load(segformer_model_path, map_location=torch.device('cpu'), weights_only=False)
 efficientnet_model = torch.load(efficientnet_model_path, map_location=torch.device('cpu'), weights_only=False)
