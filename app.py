@@ -157,6 +157,8 @@ if 'image' in locals():
         masked_image = image_np.copy()
         masked_image[fish_eye_mask == 0] = [0, 0, 0]
 
+        st.image(masked_image, caption="Segmented Fish Eye", use_column_width=True)
+
         # Extract the largest connected component (fish eye)
         num_labels, labels_im = cv2.connectedComponents(fish_eye_mask)
         if num_labels > 1:
