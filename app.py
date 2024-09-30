@@ -135,57 +135,63 @@ elif image_source == "Capture Image":
 if 'image' in locals():
     st.image(image, caption="Input Image", use_column_width=True)
 
-    # Convert to numpy array and process
-    image_np = np.array(image)
-    input_image = segformer_transform(image).unsqueeze(0)
+    # Display spinner while processing
+    with st.spinner("Processing..."):
+        # Progress bar initialization
+        progress = st.progress(0)
 
-    # Segmentation (SegFormer)
-    with torch.no_grad():
-        outputs = segformer_model(pixel_values=input_image)
-        preds = outputs.logits
-        preds = torch.argmax(F.interpolate(preds, size=(image.size[1], image.size[0]), mode='bilinear', align_corners=False), dim=1)
-        segmentation = preds.squeeze().numpy()
+        # Convert to numpy array and process
+        image_np = np.array(image)
+        input_image = segformer_transform(image).unsqueeze(0)
+        progress.progress(10)  # 10% - image preprocessing done
 
-    fish_eye_mask = (segmentation == 2).astype(np.uint8)
-    masked_image = image_np.copy()
-    masked_image[fish_eye_mask == 0] = [0, 0, 0]
-
-    # Display the segmented fish eye
-    # st.image(masked_image, caption="Segmented Fish Eye", use_column_width=True)
-
-    # Extract the largest connected component (fish eye)
-    num_labels, labels_im = cv2.connectedComponents(fish_eye_mask)
-    if num_labels > 1:
-        max_area = 0
-        max_label = 1
-        for i in range(1, num_labels):
-            area = np.sum(labels_im == i)
-            if area > max_area:
-                max_area = area
-                max_label = i
-
-        fish_eye_cropped = masked_image[np.min(np.argwhere(labels_im == max_label), axis=0)[0]:
-                                        np.max(np.argwhere(labels_im == max_label), axis=0)[0],
-                                        np.min(np.argwhere(labels_im == max_label), axis=0)[1]:
-                                        np.max(np.argwhere(labels_im == max_label), axis=0)[1]]
-
-        # Apply CLAHE
-        fish_eye_clahe = apply_clahe_to_rgb(fish_eye_cropped)
-        st.image(fish_eye_clahe, caption="CLAHE Enhanced Fish Eye", use_column_width=True)
-
-        # Classification (EfficientNetV2)
-        fish_eye_clahe_pil = Image.fromarray(fish_eye_clahe)
-        fish_eye_resized = fish_eye_clahe_pil.resize((300, 300))
-        input_image_classification = efficientnet_transform(fish_eye_resized).unsqueeze(0)
-
+        # Segmentation (SegFormer)
         with torch.no_grad():
-            outputs_classification = efficientnet_model(input_image_classification)
-            preds_classification = torch.argmax(outputs_classification, dim=1).item()
+            outputs = segformer_model(pixel_values=input_image)
+            preds = outputs.logits
+            preds = torch.argmax(F.interpolate(preds, size=(image.size[1], image.size[0]), mode='bilinear', align_corners=False), dim=1)
+            segmentation = preds.squeeze().numpy()
+        progress.progress(40)  # 40% - segmentation done
 
-        predicted_label = class_names[preds_classification]
+        fish_eye_mask = (segmentation == 2).astype(np.uint8)
+        masked_image = image_np.copy()
+        masked_image[fish_eye_mask == 0] = [0, 0, 0]
 
-        st.markdown(f"""
-            <div style="text-align: center; font-size: 30px; font-weight: bold;">
-                Predicted Freshness: {predicted_label}
-            </div>
-        """, unsafe_allow_html=True)
+        # Extract the largest connected component (fish eye)
+        num_labels, labels_im = cv2.connectedComponents(fish_eye_mask)
+        if num_labels > 1:
+            max_area = 0
+            max_label = 1
+            for i in range(1, num_labels):
+                area = np.sum(labels_im == i)
+                if area > max_area:
+                    max_area = area
+                    max_label = i
+
+            fish_eye_cropped = masked_image[np.min(np.argwhere(labels_im == max_label), axis=0)[0]:
+                                            np.max(np.argwhere(labels_im == max_label), axis=0)[0],
+                                            np.min(np.argwhere(labels_im == max_label), axis=0)[1]:
+                                            np.max(np.argwhere(labels_im == max_label), axis=0)[1]]
+
+            # Apply CLAHE
+            fish_eye_clahe = apply_clahe_to_rgb(fish_eye_cropped)
+            st.image(fish_eye_clahe, caption="CLAHE Enhanced Fish Eye", use_column_width=True)
+            progress.progress(70)  # 70% - CLAHE enhancement done
+
+            # Classification (EfficientNetV2)
+            fish_eye_clahe_pil = Image.fromarray(fish_eye_clahe)
+            fish_eye_resized = fish_eye_clahe_pil.resize((300, 300))
+            input_image_classification = efficientnet_transform(fish_eye_resized).unsqueeze(0)
+
+            with torch.no_grad():
+                outputs_classification = efficientnet_model(input_image_classification)
+                preds_classification = torch.argmax(outputs_classification, dim=1).item()
+
+            predicted_label = class_names[preds_classification]
+
+            st.markdown(f"""
+                <div style="text-align: center; font-size: 30px; font-weight: bold;">
+                    Predicted Freshness: {predicted_label}
+                </div>
+            """, unsafe_allow_html=True)
+            progress.progress(100)  # 100% - classification done
